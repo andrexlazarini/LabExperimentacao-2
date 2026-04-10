@@ -55,7 +55,6 @@ def count_releases(full_name: str, token: str | None = None) -> int:
         req.add_header("Authorization", f"Bearer {token}")
     try:
         with ur.urlopen(req, timeout=10) as resp:
-            # GitHub retorna o header Link com o número da última página
             link = resp.headers.get("Link", "")
             if 'rel="last"' in link:
                 import re
@@ -77,7 +76,6 @@ def clone_repo(full_name: str, dest: Path):
     )
 
 def run_ck(repo_dir: Path, output_dir: Path) -> Path:
-    """Executa o CK em repo_dir, salvando os CSVs em output_dir. Retorna o caminho para class.csv."""
     output_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [

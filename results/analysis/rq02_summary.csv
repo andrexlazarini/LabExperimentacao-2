@@ -1,0 +1,13 @@
+quartil,metrica_qualidade,n,media,mediana,desvio
+Q1 (baixo),CBO (mediana),250,8.9088,8.8702,3.3058
+Q1 (baixo),DIT (mediana),250,2.0816,2.0657,0.4727
+Q1 (baixo),LCOM (mediana),250,33.571,28.3341,29.7013
+Q2,CBO (mediana),250,9.304,9.2984,3.2255
+Q2,DIT (mediana),250,2.3853,2.4014,0.4273
+Q2,LCOM (mediana),250,31.8747,28.7488,26.8491
+Q3,CBO (mediana),250,8.6889,8.3471,3.8134
+Q3,DIT (mediana),250,2.5645,2.5838,0.4385
+Q3,LCOM (mediana),250,36.9004,32.8791,30.249
+Q4 (alto),CBO (mediana),250,9.7287,9.4756,3.2891
+Q4 (alto),DIT (mediana),250,2.8834,2.886,0.4241
+Q4 (alto),LCOM (mediana),250,34.8157,33.4256,28.271
