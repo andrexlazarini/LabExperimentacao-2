@@ -227,10 +227,15 @@ def boxplot_by_quartile(df: pd.DataFrame):
     fig, axes = plt.subplots(4, 3, figsize=(18, 22))
     fig.suptitle("Qualidade por Quartis de Métricas de Processo", fontsize=14, fontweight="bold")
 
-    quartile_labels = ["Q1 (baixo)", "Q2", "Q3", "Q4 (alto)"]
+    all_labels = ["Q1 (baixo)", "Q2", "Q3", "Q4 (alto)"]
 
     for row_idx, (proc_col, proc_label, rq) in enumerate(PROCESS_METRICS):
-        df[f"{proc_col}_q"] = pd.qcut(df[proc_col], 4, labels=quartile_labels)
+        # Determina número real de bins únicos disponíveis
+        cut_result, bins = pd.qcut(df[proc_col], 4, retbins=True, duplicates="drop")
+        n_bins = len(bins) - 1
+        quartile_labels = all_labels[:n_bins]
+        df[f"{proc_col}_q"] = pd.qcut(df[proc_col], 4, labels=quartile_labels, duplicates="drop")
+
         for col_idx, (qual_col, qual_label, color) in enumerate(QUALITY_METRICS):
             ax = axes[row_idx][col_idx]
             data_by_q = [
@@ -289,11 +294,15 @@ def distribution_plots(df: pd.DataFrame):
 
 def rq_summary_tables(df: pd.DataFrame):
     """Gera uma tabela de medidas centrais para cada RQ."""
+    all_q_labels = ["Q1 (baixo)", "Q2", "Q3", "Q4 (alto)"]
     for proc_col, proc_label, rq in PROCESS_METRICS:
+        _, bins = pd.qcut(df[proc_col], 4, retbins=True, duplicates="drop")
+        quartile_labels = all_q_labels[:len(bins) - 1]
         df[f"{proc_col}_q"] = pd.qcut(df[proc_col], 4,
-                                       labels=["Q1 (baixo)", "Q2", "Q3", "Q4 (alto)"])
+                                       labels=quartile_labels,
+                                       duplicates="drop")
         rows = []
-        for ql in ["Q1 (baixo)", "Q2", "Q3", "Q4 (alto)"]:
+        for ql in quartile_labels:
             sub = df[df[f"{proc_col}_q"] == ql]
             for qcol, qlabel, _ in QUALITY_METRICS:
                 s = sub[qcol].dropna()

@@ -1,0 +1,13 @@
+RQ,processo,qualidade,spearman_rho,p_value,significativo,n
+RQ01,Popularidade (estrelas),CBO (mediana),-0.1338,0.188952,não,98
+RQ01,Popularidade (estrelas),DIT (mediana),-0.0634,0.534861,não,98
+RQ01,Popularidade (estrelas),LCOM (mediana),-0.1171,0.250784,não,98
+RQ02,Maturidade (anos),CBO (mediana),0.1569,0.122856,não,98
+RQ02,Maturidade (anos),DIT (mediana),0.3175,0.001442,sim,98
+RQ02,Maturidade (anos),LCOM (mediana),-0.0115,0.910765,não,98
+RQ03,Atividade (releases),CBO (mediana),0.3788,0.00012,sim,98
+RQ03,Atividade (releases),DIT (mediana),0.2006,0.047666,sim,98
+RQ03,Atividade (releases),LCOM (mediana),0.107,0.294379,não,98
+RQ04,Tamanho (LOC total),CBO (mediana),0.3481,0.000445,sim,98
+RQ04,Tamanho (LOC total),DIT (mediana),0.2342,0.020255,sim,98
+RQ04,Tamanho (LOC total),LCOM (mediana),0.1079,0.290456,não,98
