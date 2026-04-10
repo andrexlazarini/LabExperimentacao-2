@@ -7,7 +7,7 @@ import requests
 from datetime import datetime, timezone
 
 BASE_URL = "https://api.github.com/search/repositories"
-OUTPUT_FILE = os.path.join(os.path.dirname(_file_), "..", "data", "repos.csv")
+OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "repos.csv")
 
 FIELDNAMES = [
     "posicao",
@@ -56,47 +56,59 @@ def fetch_page(page: int, headers: dict) -> list[dict]:
             if response.status_code == 403:
                 reset = int(response.headers.get("X-RateLimit-Reset", time.time() + 60))
                 wait = max(reset - int(time.time()), 1) + 2
-                print(f"  Limite de requisições atingido. Aguardando {wait}s ...", flush=True)
+                print(f"  Rate limit atingido. Aguardando {wait}s ...", flush=True)
                 time.sleep(wait)
                 continue
+            if response.status_code == 422:
+                # GitHub só permite acessar até a página 10 na search API
+                print(f"  Página {page} indisponível (limite da API GitHub Search).")
+                return []
             response.raise_for_status()
             data = response.json()
             return data.get("items", [])
         except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
             wait = 10 * (attempt + 1)
-            print(f"  Erro de timeout/conexão (tentativa {attempt+1}/5). Tentando novamente em {wait}s ...", flush=True)
+            print(f"  Timeout/conexão (tentativa {attempt+1}/5). Tentando em {wait}s ...", flush=True)
             time.sleep(wait)
     raise RuntimeError(f"Falha ao buscar a página {page} após 5 tentativas")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Busca os top-1000 repositórios Java do GitHub.")
-    parser.add_argument("--token", default=os.environ.get("GITHUB_TOKEN"), help="Token de acesso pessoal do GitHub")
+    parser.add_argument("--token", default=os.environ.get("GITHUB_TOKEN"),
+                        help="Token de acesso pessoal do GitHub")
     args = parser.parse_args()
 
     if not args.token:
-        print("AVISO: Nenhum token do GitHub fornecido. O limite de requisições é de 10 por minuto sem autenticação.")
-        print("Defina a variável de ambiente GITHUB_TOKEN ou use --token para limites maiores.\n")
+        print("AVISO: sem token GitHub. Limite: 10 req/min (suficiente para completar).\n")
 
     headers = get_headers(args.token)
-    all_repos = []
-
     out_path = os.path.abspath(OUTPUT_FILE)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
-    start_page = 1
+    # Verifica quantos já foram coletados para retomar de onde parou
+    existing_repos = []
     if os.path.exists(out_path):
         with open(out_path, newline="", encoding="utf-8") as f:
-            existing = list(csv.DictReader(f))
-        if existing:
-            all_repos.extend(existing)
-            start_page = len(existing) // 100 + 1
-            print(f"Retomando a partir da página {start_page} ({len(existing)} repositórios já salvos).")
+            existing_repos = list(csv.DictReader(f))
 
-    print("Buscando os top-1000 repositórios Java do GitHub...")
-    with open(out_path, "a" if all_repos else "w", newline="", encoding="utf-8") as f:
+    already = len(existing_repos)
+    start_page = (already // 100) + 1
+
+    if already >= 1000:
+        print(f"Já temos {already} repositórios. Nada a fazer.")
+        return
+
+    print(f"Repositórios já coletados : {already}")
+    print(f"Faltam                    : {1000 - already}")
+    print(f"Retomando da página       : {start_page}/10")
+    print()
+
+    all_repos = list(existing_repos)
+
+    with open(out_path, "a" if existing_repos else "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
-        if not all_repos:
+        if not existing_repos:
             writer.writeheader()
 
         for page in range(start_page, 11):
@@ -109,35 +121,41 @@ def main():
             page_repos = []
             for rank_offset, repo in enumerate(items):
                 posicao = (page - 1) * 100 + rank_offset + 1
+                # Pula posições que já temos
+                if posicao <= already:
+                    continue
                 page_repos.append({
-                    "posicao": posicao,
-                    "nome_completo": repo["full_name"],
-                    "url": repo["html_url"],
-                    "estrelas": repo["stargazers_count"],
-                    "forks": repo["forks_count"],
+                    "posicao":        posicao,
+                    "nome_completo":  repo["full_name"],
+                    "url":            repo["html_url"],
+                    "estrelas":       repo["stargazers_count"],
+                    "forks":          repo["forks_count"],
                     "issues_abertas": repo["open_issues_count"],
-                    "observadores": repo["watchers_count"],
-                    "tamanho_kb": repo["size"],
-                    "linguagem": repo.get("language", ""),
-                    "criado_em": repo["created_at"],
-                    "atualizado_em": repo["updated_at"],
+                    "observadores":   repo["watchers_count"],
+                    "tamanho_kb":     repo["size"],
+                    "linguagem":      repo.get("language", ""),
+                    "criado_em":      repo["created_at"],
+                    "atualizado_em":  repo["updated_at"],
                     "ultimo_push_em": repo["pushed_at"],
-                    "idade_anos": age_in_years(repo["created_at"]),
-                    "url_releases": repo["releases_url"].replace("{/id}", ""),
-                    "branch_padrao": repo["default_branch"],
-                    "descricao": (repo.get("description") or "").replace("\n", " "),
+                    "idade_anos":     age_in_years(repo["created_at"]),
+                    "url_releases":   repo["releases_url"].replace("{/id}", ""),
+                    "branch_padrao":  repo["default_branch"],
+                    "descricao":      (repo.get("description") or "").replace("\n", " "),
                 })
 
-            writer.writerows(page_repos)
-            f.flush()
-            all_repos.extend(page_repos)
-            print(f"obtidos {len(items)} repositórios (total até agora: {len(all_repos)})")
+            if page_repos:
+                writer.writerows(page_repos)
+                f.flush()
+                all_repos.extend(page_repos)
+                print(f"obtidos {len(page_repos)} repositórios (total: {len(all_repos)})")
+            else:
+                print(f"página já coberta, pulando.")
 
             if page < 10:
-                time.sleep(1)
+                time.sleep(1)  # respeita rate limit
 
-    print(f"\nConcluído! {len(all_repos)} repositórios salvos em {out_path}")
+    print(f"\nConcluído! {len(all_repos)} repositórios em {out_path}")
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
